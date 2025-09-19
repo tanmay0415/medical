@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Medical Billing System</title>
+  <!-- jsPDF library for PDF generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    /* Reset and base styles */
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f0f4f8;
+      margin: 0;
+      padding: 20px;
+      color: #333;
+    }
+    h1, h2, h3 {
+      color: #2c3e50;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+      padding: 30px;
+    }
+    .flex-row {
+      display: flex;
+      gap: 30px;
+      flex-wrap: wrap;
+    }
+    .flex-col {
+      flex: 1;
+      min-width: 300px;
+    }
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+    input[type="text"],
+    input[type="number"],
+    input[type="tel"] {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px;
+      border: 2px solid #ddd;
+      border-radius: 6px;
+      font-size: 16px;
+      transition: border-color 0.3s;
+    }
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    input[type="tel"]:focus {
+      border-color: #3498db;
+      outline: none;
+    }
+    button {
+      background: #3498db;
+      color: white;
+      border: none;
+      padding: 12px 25px;
+      font-size: 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.3s;
+      margin-top: 10px;
+    }
+    button:hover {
+      background: #2980b9;
+    }
+    .medicine-list {
+      max-height: 250px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 10px;
+      background: #fafafa;
+    }
+    .medicine-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 10px;
+      border-bottom: 1px solid #ddd;
+    }
+    .medicine-item:last-child {
+      border-bottom: none;
+    }
+    .medicine-item span {
+      flex: 1;
+    }
+    .remove-btn {
+      background: #e74c3c;
+      border: none;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.3s;
+    }
+    .remove-btn:hover {
+      background: #c0392b;
+    }
+    .bill-preview {
+      margin-top: 30px;
+      border: 2px solid #3498db;
+      border-radius: 10px;
+      padding: 20px;
+      background: #f9fbfd;
+      display: none;
+    }
+    .bill-header {
+      text-align: center;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #3498db;
+      padding-bottom: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px;
+      text-align: left;
+    }
+    th {
+      background: #3498db;
+      color: white;
+    }
+    .total-row td {
+      font-weight: 700;
+      font-size: 1.1em;
+      background: #eaf4fc;
+    }
+    @media (max-width: 700px) {
+      .flex-row {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Medical Billing System</h1>
+    <div class="flex-row">
+      <!-- Left side: Input form -->
+      <div class="flex-col">
+        <h2>Customer Details</h2>
+        <label for="customerName">Customer Name *</label>
+        <input type="text" id="customerName" placeholder="Enter customer name" required />
+        <label for="customerPhone">Phone Number</label>
+        <input type="tel" id="customerPhone" placeholder="Enter phone number" />
+
+        <h2>Add Medicine</h2>
+        <label for="medicineName">Medicine Name *</label>
+        <input type="text" id="medicineName" placeholder="Enter medicine name" />
+        <label for="medicineQuantity">Quantity *</label>
+        <input type="number" id="medicineQuantity" min="1" value="1" />
+        <label for="medicinePrice">Price per Unit (₹) *</label>
+        <input type="number" id="medicinePrice" min="0" step="0.01" />
+
+        <button onclick="addMedicine()">Add Medicine</button>
+
+        <h3>Medicines Added</h3>
+        <div class="medicine-list" id="medicineList">
+          <!-- Medicine items will appear here -->
+          <p style="color:#666;">No medicines added yet.</p>
+        </div>
+
+        <div style="margin-top: 20px;">
+          <strong>Total Items:</strong> <span id="totalItems">0</span><br />
+          <strong>Total Amount:</strong> ₹<span id="totalAmount">0.00</span>
+        </div>
+
+        <button style="margin-top: 25px;" onclick="generateBill()">Generate Bill</button>
+        <button style="margin-left: 10px;" onclick="printBill()">Print / Download PDF</button>
+      </div>
+
+      <!-- Right side: Bill preview -->
+      <div class="flex-col">
+        <div class="bill-preview" id="billPreview">
+          <div class="bill-header">
+            <h2>MEDICAL BILL</h2>
+            <p id="billDate"></p>
+          </div>
+          <p><strong>Customer:</strong> <span id="billCustomer"></span></p>
+          <p><strong>Phone:</strong> <span id="billPhone"></span></p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Medicine</th>
+                <th>Quantity</th>
+                <th>Price (₹)</th>
+                <th>Total (₹)</th>
+              </tr>
+            </thead>
+            <tbody id="billItems"></tbody>
+            <tfoot>
+              <tr class="total-row">
+                <td colspan="3" style="text-align:right;">Total Amount</td>
+                <td id="billTotal">0.00</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let medicines = [];
+
+    function addMedicine() {
+      const name = document.getElementById('medicineName').value.trim();
+      const quantity = parseInt(document.getElementById('medicineQuantity').value);
+      const price = parseFloat(document.getElementById('medicinePrice').value);
+
+      if (!name) {
+        alert('Please enter medicine name.');
+        return;
+      }
+      if (!quantity || quantity < 1) {
+        alert('Please enter a valid quantity (1 or more).');
+        return;
+      }
+      if (isNaN(price) || price < 0) {
+        alert('Please enter a valid price (0 or more).');
+        return;
+      }
+
+      medicines.push({
+        name,
+        quantity,
+        price,
+        total: quantity * price,
+      });
+
+      updateMedicineList();
+
+      // Clear inputs
+      document.getElementById('medicineName').value = '';
+      document.getElementById('medicineQuantity').value = 1;
+      document.getElementById('medicinePrice').value = '';
+    }
+
+    function updateMedicineList() {
+      const list = document.getElementById('medicineList');
+      list.innerHTML = '';
+
+      if (medicines.length === 0) {
+        list.innerHTML = '<p style="color:#666;">No medicines added yet.</p>';
+        updateTotals();
+        return;
+      }
+
+      medicines.forEach((med, index) => {
+        const div = document.createElement('div');
+        div.className = 'medicine-item';
+        div.innerHTML = `
+          <span><strong>${med.name}</strong> - Qty: ${med.quantity} @ ₹${med.price.toFixed(2)}</span>
+          <span>₹${med.total.toFixed(2)}</span>
+          <button class="remove-btn" onclick="removeMedicine(${index})">Remove</button>
+        `;
+        list.appendChild(div);
+      });
+
+      updateTotals();
+    }
+
+    function removeMedicine(index) {
+      medicines.splice(index, 1);
+      updateMedicineList();
+    }
+
+    function updateTotals() {
+      const totalItems = medicines.length;
+      const totalAmount = medicines.reduce((sum, med) => sum + med.total, 0);
+
+      document.getElementById('totalItems').textContent = totalItems;
+      document.getElementById('totalAmount').textContent = totalAmount.toFixed(2);
+    }
+
+    function generateBill() {
+      const customerName = document.getElementById('customerName').value.trim();
+      const customerPhone = document.getElementById('customerPhone').value.trim();
+
+      if (!customerName) {
+        alert('Please enter customer name.');
+        return;
+      }
+      if (medicines.length === 0) {
+        alert('Please add at least one medicine.');
+        return;
+      }
+
+      // Show bill preview
+      document.getElementById('billPreview').style.display = 'block';
+      document.getElementById('billCustomer').textContent = customerName;
+      document.getElementById('billPhone').textContent = customerPhone || 'N/A';
+      document.getElementById('billDate').textContent = new Date().toLocaleString();
+
+      const billItems = document.getElementById('billItems');
+      billItems.innerHTML = '';
+
+      medicines.forEach(med => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${med.name}</td>
+          <td>${med.quantity}</td>
+          <td>₹${med.price.toFixed(2)}</td>
+          <td>₹${med.total.toFixed(2)}</td>
+        `;
+        billItems.appendChild(tr);
+      });
+
+      const totalAmount = medicines.reduce((sum, med) => sum + med.total, 0);
+      document.getElementById('billTotal').textContent = totalAmount.toFixed(2);
+    }
+
+    async function printBill() {
+      generateBill();
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      const customerName = document.getElementById('customerName').value.trim();
+      const customerPhone = document.getElementById('customerPhone').value.trim();
+      const dateStr = new Date().toLocaleString();
+
+      // Header
+      doc.setFontSize(22);
+      doc.text('MEDICAL BILL', 105, 20, null, null, 'center');
+      doc.setFontSize(12);
+      doc.text(`Date: ${dateStr}`, 105, 30, null, null, 'center');
+
+      // Customer info
+      doc.setFontSize(14);
+      doc.text(`Customer: ${customerName}`, 20, 45);
+      doc.text(`Phone: ${customerPhone || 'N/A'}`, 20, 55);
+
+      // Table headers
+      doc.setFontSize(12);
+      const startY = 70;
+      doc.text('Medicine', 20, startY);
+      doc.text('Quantity', 90, startY);
+      doc.text('Price (₹)', 130, startY);
+      doc.text('Total (₹)', 170, startY);
+
+      // Draw line under headers
+      doc.line(20, startY + 2, 190, startY + 2);
+
+      // Table content
+      let y = startY + 12;
+      medicines.forEach(med => {
+        doc.text(med.name, 20, y);
+        doc.text(med.quantity.toString(), 90, y);
+        doc.text(med.price.toFixed(2), 130, y);
+        doc.text(med.total.toFixed(2), 170, y);
+        y += 10;
+      });
+
+      // Total amount
+      const totalAmount = medicines.reduce((sum, med) => sum + med.total, 0);
+      doc.setFontSize(14);
+      doc.text(`Total Amount: ₹${totalAmount.toFixed(2)}`, 20, y + 15);
+
+      // Save PDF
+      doc.save('medical-bill.pdf');
+
+      // Open print dialog
+      window.print();
+    }
+  </script>
+</body>
+</html>
